@@ -23,7 +23,7 @@ rm -rf "$STAGE/$APP/Contents/Resources/__pycache__"
 ln -s /Applications "$STAGE/Applications"
 
 # 附上簡短說明
-cat > "$STAGE/請先閱讀.txt" <<'EOF'
+cat > "$STAGE/README-FIRST.txt" <<'EOF'
 Robin — 影片 / 音訊下載器
 
 安裝:
@@ -52,5 +52,7 @@ SIZE=$(du -h "$OUT" | cut -f1)
 echo ""
 echo "✓ 完成:$(pwd)/$OUT  ($SIZE)"
 echo ""
-open -R "$OUT"
-read -n 1 -s -r -p "按任意鍵關閉…"
+if [ -t 0 ]; then
+  open -R "$OUT"
+  read -n 1 -s -r -p "按任意鍵關閉…"
+fi

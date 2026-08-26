@@ -86,7 +86,7 @@ The source entry point is `Robin.app/Contents/Resources/main.py`, and the interf
 Run the included build script on macOS:
 
 ```bash
-bash "打包 DMG.command"
+bash build-dmg.command
 ```
 
 The script packages `Robin.app` into `Robin.dmg` and adds an Applications shortcut. It also removes Python cache files from the packaged app.
