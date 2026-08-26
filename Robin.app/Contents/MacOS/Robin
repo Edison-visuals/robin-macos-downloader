@@ -1,0 +1,31 @@
+#!/bin/bash
+RES="$(cd "$(dirname "$0")/../Resources" && pwd)"
+SUP="$HOME/Library/Application Support/Robin"
+VENV="$SUP/venv"
+
+PY=""
+for c in python3.13 python3.12 python3.11 /opt/homebrew/bin/python3 /usr/local/bin/python3 \
+         /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 \
+         /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 \
+         /usr/bin/python3; do
+  if command -v "$c" >/dev/null 2>&1; then
+    if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+      PY="$c"; break
+    fi
+    [ -z "$FALLBACK" ] && FALLBACK="$c"
+  fi
+done
+[ -z "$PY" ] && PY="$FALLBACK"
+
+if [ ! -x "$VENV/bin/python" ]; then
+  osascript -e 'display notification "首次啟動,正在安裝元件(約一分鐘)…" with title "Robin"' 2>/dev/null
+  mkdir -p "$SUP"
+  "$PY" -m venv "$VENV" || { osascript -e 'display alert "Robin" message "找不到 python3,請先安裝 Xcode Command Line Tools:xcode-select --install"'; exit 1; }
+  "$VENV/bin/pip" install -q --upgrade pip
+  "$VENV/bin/pip" install -q -r "$RES/requirements.txt" || { osascript -e 'display alert "Robin" message "套件安裝失敗,請檢查網路後再開啟一次"'; rm -rf "$VENV"; exit 1; }
+  osascript -e 'display notification "安裝完成" with title "Robin"' 2>/dev/null
+fi
+
+("$VENV/bin/pip" install -q --upgrade yt-dlp certifi >/dev/null 2>&1 &)
+
+exec "$VENV/bin/python" "$RES/main.py"

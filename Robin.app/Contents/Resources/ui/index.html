@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robin</title>
+<style>
+  :root { --bg: #e2e8e9; --panel: rgba(255,255,255,.8); --ink: #1d2223;
+    --coral: #d96a4a; --coral-dark: #a8482c; --tagtext: #2b1006;
+    --dim: #7d8a8b; --red: #b8402a; }
+  body.dark { --bg: #171a1b; --panel: rgba(255,255,255,.07); --ink: #e8ecec;
+    --dim: #8f9b9c; --coral-dark: #e08a6e; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    min-height: 100vh; user-select: none; -webkit-user-select: none;
+    transition: background .3s, color .3s; overflow-x: hidden; }
+
+  .tag { display: inline-block; background: var(--coral); color: var(--tagtext);
+    font-size: 11px; padding: 3px 9px; margin-bottom: -1px; letter-spacing: .5px;
+    position: relative; z-index: 1; }
+  .box { border: 1.5px solid var(--coral); background: var(--panel); }
+
+  .splash { position: fixed; inset: 0; z-index: 99; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px; transition: opacity .5s ease, transform .6s cubic-bezier(.6,0,.3,1); }
+  .splash.off { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+  .splash svg { width: 120px; height: auto; color: var(--ink); }
+  .splash .stroke { fill: none; stroke: currentColor; stroke-width: 66;
+    stroke-dasharray: 1500; stroke-dashoffset: 1500; animation: draw 1s ease forwards; }
+  .splash .s2 { animation-delay: .15s; } .splash .s3 { animation-delay: .35s; }
+  .splash .s4 { animation-delay: .5s; }
+  body.quick .splash .stroke { animation-duration: .35s; }
+  body.quick .splash .s2 { animation-delay: .05s; }
+  body.quick .splash .s3 { animation-delay: .12s; }
+  body.quick .splash .s4 { animation-delay: .18s; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .splash .word { font-size: 30px; font-weight: 700; letter-spacing: 8px;
+    color: var(--ink); opacity: 0; animation: rise .6s ease .9s forwards; }
+  body.quick .splash .word { animation-delay: .3s; animation-duration: .35s; }
+  .cd { color: var(--coral); }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  .page { padding: 22px 28px; max-width: none; margin: 0 auto; width: 100%; }
+
+  #page1 { display: none; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh; gap: 52px; animation: fadein .5s ease; }
+  #page1.show { display: flex; }
+  #page1.out { animation: shatterOut .45s cubic-bezier(.5,0,.8,.4) forwards; }
+  @keyframes shatterOut { to { opacity: 0; transform: scale(1.06); filter: blur(2px); } }
+  #page1 .name { font-size: 54px; font-weight: 700; letter-spacing: 6px; }
+  #page1 .sub { text-align: center; margin-top: 14px; }
+  .inputwrap { width: min(480px, 90vw); text-align: left; }
+  .inputrow { display: flex; }
+  input[type=text] { flex: 1; padding: 17px 14px; border: none; background: transparent;
+    font-size: 13px; color: var(--ink); font-family: inherit; outline: none; min-width: 0;
+    caret-color: var(--coral); user-select: text; -webkit-user-select: text; }
+  input[type=text]::placeholder { color: var(--dim); }
+  .go { padding: 0 24px; background: var(--coral); color: #fff; border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: filter .2s, transform .12s; }
+  .go:hover:not(:disabled) { filter: brightness(1.1); }
+  .go:active:not(:disabled) { transform: scale(.94); }
+  .go svg { display: block; transition: transform .2s; }
+  .go:hover:not(:disabled) svg { transform: translateX(3px); }
+  .go.loading svg { display: none; }
+  .go.loading::after { content: ""; display: block; width: 18px; height: 18px;
+    border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%;
+    animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hint { margin-top: 12px; font-size: 12px; font-weight: 700; color: var(--red);
+    display: none; }
+  .hint.show { display: block; animation: rise .3s ease; }
+  .p1btns { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+  #activeChip { display: none; margin-top: 14px; text-align: center; }
+  #activeChip.show { display: block; animation: rise .3s ease; }
+  #activeChip button { background: var(--coral); color: #fff; border: none;
+    font-family: inherit; font-size: 11px; letter-spacing: 1px; padding: 6px 14px;
+    cursor: pointer; animation: pulse 1.6s infinite; }
+  .hbtn { font-size: 11px; color: var(--coral-dark); background: transparent;
+    border: 1.5px solid var(--coral); padding: 4px 10px; cursor: pointer;
+    font-family: inherit; letter-spacing: .5px;
+    transition: background .2s, color .2s, transform .12s; }
+  .hbtn:hover { background: var(--coral); color: #fff; }
+  .hbtn:active { transform: scale(.94); }
+
+  .inner { display: none; flex-direction: column; min-height: 100vh;
+    animation: fadein .4s ease; }
+  .inner.show { display: flex; }
+  .phead { display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; }
+  .phead .name { font-size: 18px; font-weight: 700; letter-spacing: 3px; }
+  .hbtns { display: flex; gap: 8px; }
+
+  .main { display: flex; gap: 18px; flex: 1; }
+  .collage { flex: 1; position: relative; min-height: 380px; min-width: 0;
+    margin-right: 10px; }
+  .frag { position: absolute; opacity: 0; }
+  .frag.in { animation: shatterIn .55s cubic-bezier(.25,1.2,.4,1) forwards,
+    float 4.5s ease-in-out calc(var(--d) + .6s) infinite alternate; }
+  @keyframes shatterIn {
+    from { opacity: 0; transform: translate(var(--fx), var(--fy)) scale(.5) rotate(var(--rot)); }
+    to { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); } }
+  @keyframes float { from { transform: translate(0, 0); } to { transform: translate(4px, -7px); } }
+  .frag .pic { border: 1.5px solid var(--coral); background-color: #8b9b9c;
+    background-size: 320% 320%; }
+  .frag .tag { font-size: 12px; padding: 4px 10px; }
+  .frag.hero .pic { border-width: 2px; background-size: 130% 130%;
+    background-position: center !important; }
+  .frag.hero .tag { font-size: 13px; padding: 5px 12px; }
+
+  .params { width: 230px; flex-shrink: 0; display: flex; flex-direction: column; gap: 13px; }
+  .params > div { opacity: 0; animation: rise .45s ease forwards; }
+  .params > div:nth-child(1) { animation-delay: .15s; }
+  .params > div:nth-child(2) { animation-delay: .25s; }
+  .params > div:nth-child(3) { animation-delay: .35s; }
+  .params > div:nth-child(4) { animation-delay: .45s; }
+  .params > div:nth-child(5) { animation-delay: .55s; }
+  .titlecard { padding: 9px 11px; font-size: 12px; line-height: 1.55; }
+  .titlecard .who { font-size: 10px; color: var(--coral-dark); margin-top: 5px; }
+  .switch { display: flex; position: relative; }
+  .switch .knob { position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+    background: var(--coral); transition: transform .25s cubic-bezier(.5,0,.3,1.4); }
+  .switch.audio .knob { transform: translateX(100%); }
+  .switch .opt { flex: 1; position: relative; z-index: 1; text-align: center;
+    padding: 10px 0; font-size: 12px; color: var(--coral-dark); cursor: pointer;
+    background: transparent; border: none; font-family: inherit; transition: color .25s; }
+  .switch .opt.on { color: #fff; }
+  select { width: 100%; padding: 10px 14px; font-size: 12px; color: var(--ink);
+    background: var(--panel); border: 1.5px solid var(--coral); font-family: inherit;
+    text-transform: uppercase; outline: none; appearance: none; border-radius: 0;
+    text-align: center; text-align-last: center; cursor: pointer; transition: background .2s; }
+  select:hover { background: var(--coral); color: #fff; }
+  select:disabled { opacity: .3; cursor: default; }
+  #qwrap { transition: opacity .3s; }
+  #qwrap.off { opacity: .25; pointer-events: none; }
+  .dlbtn { padding: 13px 0; background: var(--coral); color: #fff; font-size: 13px;
+    letter-spacing: 2px; text-align: center; cursor: pointer; border: none;
+    font-family: inherit; width: 100%; margin-top: 6px;
+    transition: filter .2s, transform .12s; }
+  .dlbtn:hover { filter: brightness(1.1); }
+  .dlbtn:active { transform: scale(.96); }
+
+  #tasks { margin-top: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .task { animation: rise .4s ease; }
+  .trow { display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: -1px; gap: 10px; }
+  .trow .tname { font-size: 11px; color: var(--dim); overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis; padding-bottom: 3px; flex: 1;
+    text-align: right; }
+  .tbtns { display: flex; gap: 4px; }
+  .tp, .ts { font-size: 10px; color: var(--coral-dark); background: transparent;
+    border: 1.5px solid var(--coral); padding: 2px 8px; cursor: pointer;
+    font-family: inherit; transition: background .2s, color .2s; }
+  .tp:hover { background: var(--coral); color: #fff; }
+  .ts:hover { background: var(--red); border-color: var(--red); color: #fff; }
+  .task.processing .tp, .task.processing .ts { opacity: .3; pointer-events: none; }
+  .task.final .tbtns { display: none; }
+  .bar { height: 16px; border: 1.5px solid var(--coral); background: var(--panel); }
+  .bar i { display: block; height: 100%; width: 0%; background: var(--coral);
+    transition: width .6s ease; }
+  .bar i.indet { width: 100% !important;
+    background: repeating-linear-gradient(-45deg, var(--coral) 0 12px, transparent 12px 24px);
+    animation: indet 1s linear infinite; }
+  @keyframes indet { to { background-position: 34px 0; } }
+  .task.processing .bar i { animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: .6; } }
+  .task.error .tag { background: var(--red); color: #fff; }
+  .task.error .bar { border-color: var(--red); }
+  .task.error .bar i { background: var(--red); }
+  .task.stopped .tag { background: var(--dim); color: #fff; }
+  .task.stopped .bar { border-color: var(--dim); }
+  .task.stopped .bar i { background: var(--dim); }
+  .task.removing { opacity: 0; transform: translateX(24px);
+    transition: opacity .45s ease, transform .45s ease; }
+  .task.done .tag { animation: pop .4s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
+
+  #rows { display: flex; flex-direction: column; gap: 18px; animation: fadein .4s ease; }
+  .brow .rhead { display: flex; justify-content: space-between; margin-bottom: -1px; }
+  .brow .rx { font-size: 12px; color: var(--coral-dark); padding: 3px 6px; cursor: pointer;
+    background: transparent; border: none; font-family: inherit; transition: transform .15s; }
+  .brow .rx:hover { transform: scale(1.3); }
+  .brow .rbtns { display: flex; gap: 4px; align-items: center; }
+  .brow .rcp, .brow .rcs { display: none; font-size: 10px; color: var(--coral-dark);
+    background: transparent; border: 1.5px solid var(--coral); padding: 2px 8px;
+    cursor: pointer; font-family: inherit; transition: background .2s, color .2s; }
+  .brow .rcp:hover { background: var(--coral); color: #fff; }
+  .brow .rcs:hover { background: var(--red); border-color: var(--red); color: #fff; }
+  .brow.active .rcp, .brow.active .rcs { display: inline-block; animation: fadein .2s ease; }
+  .brow .rline { display: flex; align-items: stretch; }
+  .rthumb { width: 70px; min-width: 70px; border-right: 1.5px solid var(--coral);
+    background: #8b9b9c center/cover no-repeat; display: flex; align-items: center;
+    justify-content: center; color: #fff; font-size: 14px; transition: background .3s; }
+  .rthumb.checking { animation: pulse 1s infinite; }
+  .rthumb.bad { background-color: var(--red); }
+  .brow input[type=text] { padding: 13px 12px; font-size: 12px; }
+  .brow select { width: auto; min-width: 74px; border: none;
+    border-left: 1.5px solid var(--coral); font-size: 11px; padding: 13px 8px;
+    color: var(--coral-dark); background: transparent; }
+  .brow select:hover { background: var(--coral); color: #fff; }
+  .addrow { border: 1.5px dashed var(--coral); padding: 12px 0; text-align: center;
+    font-size: 12px; color: var(--coral-dark); cursor: pointer; background: transparent;
+    font-family: inherit; width: 100%; margin-top: 18px; transition: background .2s, color .2s; }
+  .addrow:hover { background: var(--coral); color: #fff; border-style: solid; }
+  .batchfoot { display: flex; gap: 14px; margin-top: 26px; align-items: center; }
+  .batchfoot .bar { flex: 1; }
+  .batchfoot .bstat { font-size: 11px; color: var(--coral-dark); white-space: nowrap; }
+  .batchfoot .dlbtn { width: auto; padding: 12px 26px; margin: 0; }
+
+  #dropZone { position: fixed; inset: 14px; border: 2px dashed var(--coral);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; z-index: 50; pointer-events: none;
+    background: color-mix(in srgb, var(--coral) 10%, var(--bg)); }
+  body.dragging #dropZone { display: flex; animation: fadein .15s ease; }
+  #dropZone .big { font-size: 26px; font-weight: 700; letter-spacing: 4px;
+    color: var(--coral-dark); }
+  body.dragging #page1 .inputrow { border-color: var(--coral);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral) 35%, transparent); }
+
+  .setwrap { max-width: 560px; display: flex; flex-direction: column; gap: 22px;
+    animation: fadein .4s ease; }
+  .setrow .pathbox { padding: 13px 12px; font-size: 12px; color: var(--ink);
+    word-break: break-all; line-height: 1.6; }
+  .setbtns { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+  .setnote { font-size: 10px; color: var(--dim); margin-top: 8px; line-height: 1.7; }
+  #histList { display: flex; flex-direction: column; }
+  #histList .hrow { display: flex; justify-content: space-between; gap: 12px;
+    padding: 9px 12px; font-size: 11px; border-bottom: 1px solid
+    color-mix(in srgb, var(--coral) 30%, transparent); }
+  #histList .hrow:last-child { border-bottom: none; }
+  #histList .ht { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #histList .hs { color: var(--coral-dark); white-space: nowrap; }
+  #histList .hs.bad { color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <svg viewBox="-40 140 830 910" aria-hidden="true">
+    <line class="stroke s1" x1="375" y1="180" x2="375" y2="1005"/>
+    <rect class="stroke s2" x="111" y="481" width="528" height="218" rx="109"/>
+    <line class="stroke s3" x1="30" y1="180" x2="300" y2="470"/>
+    <line class="stroke s4" x1="450" y1="710" x2="720" y2="1000"/>
+  </svg>
+  <div class="word">ROBIN<span class="cd">.</span></div>
+</div>
+
+<div id="dropZone" aria-hidden="true">
+  <span class="tag" style="font-size:13px; padding:5px 12px;">Drop: URL_ 100%</span>
+  <div class="big">DROP URL HERE ⤓</div>
+</div>
+
+<div id="page1" class="page show">
+  <div>
+    <div class="name">ROBIN<span class="cd">.</span></div>
+    <div class="sub"><span class="tag">Video / Audio Downloader 100%</span></div>
+  </div>
+  <div class="inputwrap">
+    <span class="tag">Input: URL_</span>
+    <div class="inputrow box">
+      <input type="text" id="url" placeholder="貼上影片網址…">
+      <button class="go" id="parse">
+        <svg width="30" height="22" viewBox="0 0 30 22" fill="none" aria-hidden="true">
+          <path d="M1 11h24M16 2l10 9-10 9" stroke="currentColor" stroke-width="3.5"/>
+        </svg>
+      </button>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="p1btns">
+      <button class="hbtn" id="toBatch">MULTIPLES →</button>
+      <button class="hbtn" id="toSettings">SETTINGS</button>
+      <button class="hbtn themeBtn">DARK</button>
+      <button class="hbtn quitBtn">QUIT ✕</button>
+    </div>
+    <div id="activeChip"><button id="activeBtn">DOWNLOADING… 1 ↓</button></div>
+  </div>
+</div>
+
+<div id="page2" class="page inner">
+  <div class="phead">
+    <span class="name">ROBIN<span class="cd">.</span></span>
+    <div class="hbtns">
+      <button class="hbtn themeBtn">DARK</button>
+      <button class="hbtn openDl">OPEN FOLDER ↗</button>
+      <button class="hbtn backBtn">← BACK</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="collage" id="collage"></div>
+    <div class="params">
+      <div>
+        <span class="tag" id="titleTag">Title 93%</span>
+        <div class="box titlecard">
+          <div id="title"></div>
+          <div class="who" id="uploader"></div>
+        </div>
+      </div>
+      <div>
+        <span class="tag">Mode</span>
+        <div class="switch box" id="modeSwitch">
+          <div class="knob"></div>
+          <button class="opt on" id="mVideo">影片</button>
+          <button class="opt" id="mAudio">音訊</button>
+        </div>
+      </div>
+      <div>
+        <span class="tag">Format</span>
+        <select id="container"></select>
+      </div>
+      <div id="qwrap">
+        <span class="tag">Quality</span>
+        <select id="quality"></select>
+      </div>
+      <div>
+        <button class="dlbtn" id="dl">下載 ↓</button>
+      </div>
+    </div>
+  </div>
+  <div id="tasks"></div>
+</div>
+
+<div id="page3" class="page inner">
+  <div class="phead">
+    <span class="name">ROBIN<span class="cd">.</span></span>
+    <div class="hbtns">
+      <button class="hbtn themeBtn">DARK</button>
+      <button class="hbtn openDl">OPEN FOLDER ↗</button>
+      <button class="hbtn backBtn">← BACK</button>
+    </div>
+  </div>
+  <div style="margin-bottom: 20px;"><span class="tag" id="batchTag">Multiples: Batch 0 items</span></div>
+  <div id="rows"></div>
+  <button class="addrow" id="addRow">+ ADD ROW</button>
+  <div class="batchfoot">
+    <div class="bar"><i id="batchBar"></i></div>
+    <span class="bstat" id="batchStat">0 / 0 DONE</span>
+    <button class="dlbtn" id="dlAll">全部下載 ↓</button>
+  </div>
+  <div style="flex:1"></div>
+</div>
+
+<div id="page4" class="page inner">
+  <div class="phead">
+    <span class="name">ROBIN<span class="cd">.</span></span>
+    <div class="hbtns">
+      <button class="hbtn themeBtn">DARK</button>
+      <button class="hbtn quitBtn">QUIT ✕</button>
+      <button class="hbtn backBtn">← BACK</button>
+    </div>
+  </div>
+  <div class="setwrap">
+    <div style="margin-bottom: 4px;"><span class="tag">Settings</span></div>
+    <div class="setrow">
+      <span class="tag">Output Location</span>
+      <div class="box pathbox" id="outPath">~/Downloads</div>
+      <div class="setbtns">
+        <button class="hbtn" id="pickFolder">選擇資料夾…</button>
+        <button class="hbtn openDl">開啟資料夾 ↗</button>
+      </div>
+    </div>
+    <div class="setrow">
+      <span class="tag">Browser Cookies</span>
+      <select id="cookieSel" style="margin-top:0">
+        <option value="">不使用</option>
+        <option value="chrome">Chrome</option>
+        <option value="safari">Safari</option>
+        <option value="firefox">Firefox</option>
+        <option value="edge">Edge</option>
+        <option value="brave">Brave</option>
+      </select>
+      <div class="setnote">會員限定 / 年齡限制影片需要登入 cookies。首次使用時 macOS 可能要求鑰匙圈或磁碟存取權限。</div>
+    </div>
+    <div class="setrow">
+      <span class="tag">Completion Sound</span>
+      <select id="soundSel" style="margin-top:0">
+        <option value="Glass">Glass</option>
+        <option value="Ping">Ping</option>
+        <option value="Hero">Hero</option>
+        <option value="Submarine">Submarine</option>
+        <option value="Pop">Pop</option>
+        <option value="Blow">Blow</option>
+        <option value="Funk">Funk</option>
+        <option value="">靜音</option>
+      </select>
+      <div class="setbtns">
+        <button class="hbtn" id="testSound">試聽 ♪</button>
+        <span class="setnote" style="margin:0">下載完成時播放,失敗時為低沉提示音。</span>
+      </div>
+    </div>
+    <div class="setrow">
+      <span class="tag">Engine</span>
+      <div class="box pathbox">yt-dlp <span id="ydVer">?</span> · ffmpeg <span id="ffOk">?</span></div>
+      <div class="setbtns">
+        <button class="hbtn" id="updYd">更新 yt-dlp</button>
+        <span class="setnote" id="updNote" style="margin:0"></span>
+      </div>
+    </div>
+    <div class="setrow">
+      <span class="tag">History</span>
+      <div class="box" id="histList"><div class="hrow"><span class="ht" style="color:var(--dim)">尚無紀錄</span></div></div>
+    </div>
+  </div>
+  <div style="flex:1"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+let mode = "video", heights = [], currentThumb = "", currentUrl = "";
+const VIDEO_FMT = ["mp4", "mov", "mkv", "webm"];
+const AUDIO_FMT = ["mp3", "m4a", "wav", "flac", "opus"];
+const VIDEO_Q = ["best", "2160", "1440", "1080", "720", "480"];
+let api = null, activeCount = 0;
+window.addEventListener("pywebviewready", async () => {
+  api = window.pywebview.api;
+  try { loadSettings(); } catch (e) {}
+});
+
+if (localStorage.getItem("robin-splash-seen")) document.body.classList.add("quick");
+const splashMain = document.body.classList.contains("quick") ? 900 : 1900;
+setTimeout(() => $("splash").classList.add("off"), splashMain);
+setTimeout(() => $("splash").style.display = "none", splashMain + 700);
+localStorage.setItem("robin-splash-seen", "1");
+
+if (localStorage.getItem("robin-theme") === "dark") document.body.classList.add("dark");
+updateThemeBtn();
+document.querySelectorAll(".themeBtn").forEach(b => b.onclick = () => {
+  document.body.classList.toggle("dark");
+  localStorage.setItem("robin-theme", document.body.classList.contains("dark") ? "dark" : "light");
+  updateThemeBtn();
+});
+function updateThemeBtn() {
+  const t = document.body.classList.contains("dark") ? "LIGHT" : "DARK";
+  document.querySelectorAll(".themeBtn").forEach(b => b.textContent = t);
+}
+document.querySelectorAll(".openDl").forEach(b => b.onclick = () => { if (api) api.open_downloads(); });
+document.querySelectorAll(".backBtn").forEach(b => b.onclick = () => showPage("page1"));
+document.querySelectorAll(".quitBtn").forEach(b => b.onclick = async () => {
+  if (activeCount > 0 && !confirm(`還有 ${activeCount} 個下載進行中,確定結束 Robin?`)) return;
+  b.textContent = "QUITTING…";
+  if (api) { try { await api.quit_app(); } catch (e) {} }
+});
+window.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "q") {
+    e.preventDefault();
+    document.querySelector(".quitBtn").click();
+  }
+});
+
+function showPage(id) {
+  ["page1", "page2", "page3", "page4"].forEach(p => {
+    $(p).classList.toggle("show", p === id);
+    if (p === "page1") $(p).classList.remove("out");
+  });
+  if (id === "page4") loadSettings();
+}
+$("toBatch").onclick = () => { showPage("page3"); if (!rows.length) addBatchRow(); };
+$("toSettings").onclick = () => showPage("page4");
+
+function bumpActive(n) {
+  activeCount = Math.max(0, activeCount + n);
+  $("activeChip").classList.toggle("show", activeCount > 0);
+  $("activeBtn").textContent = `DOWNLOADING… ${activeCount} ↓`;
+}
+$("activeBtn").onclick = () => showPage("page2");
+
+// ---------- 設定頁 ----------
+async function loadSettings() {
+  if (!api) return;
+  try {
+    const s = await api.get_settings();
+    $("outPath").textContent = s.download_dir || "~/Downloads";
+    $("cookieSel").value = s.cookies_browser || "";
+    $("soundSel").value = s.sound == null ? "Glass" : s.sound;
+    $("ydVer").textContent = s.ytdlp_version || "?";
+    $("ffOk").textContent = s.ffmpeg ? "✓" : "✕ 未安裝";
+    const h = await api.get_history();
+    if (h && h.length) {
+      $("histList").innerHTML = h.slice(0, 12).map(e =>
+        `<div class="hrow"><span class="ht">${esc(e.title)}</span>
+         <span class="hs ${e.status === "error" ? "bad" : ""}">${esc(e.fmt)} · ${e.status === "done" ? "✓" : "✕"} · ${esc(e.time)}</span></div>`).join("");
+    }
+  } catch (e) {}
+}
+$("pickFolder").onclick = async () => {
+  if (!api) return;
+  const r = await api.choose_folder();
+  if (r.download_dir) $("outPath").textContent = r.download_dir;
+};
+$("cookieSel").onchange = async () => { if (api) await api.set_cookies($("cookieSel").value); };
+$("soundSel").onchange = async () => { if (api) await api.set_sound($("soundSel").value); };
+$("testSound").onclick = async () => { if (api) await api.test_sound(); };
+$("updYd").onclick = async () => {
+  if (!api) return;
+  $("updNote").textContent = "更新中…";
+  const r = await api.update_ytdlp();
+  $("ydVer").textContent = r.version;
+  $("updNote").textContent = r.note;
+};
+
+// ---------- 剪貼簿偵測:安靜填入,不彈任何視窗 ----------
+setInterval(async () => {
+  if (!api || !$("page1").classList.contains("show")) return;
+  if ($("url").value.trim()) return;              // 已有內容就不動
+  if (w_focusedInput()) return;                   // 正在打字就不動
+  try {
+    const r = await api.get_clipboard_url();
+    if (r.url) $("url").value = r.url;
+  } catch (e) {}
+}, 2000);
+function w_focusedInput() {
+  return document.activeElement && document.activeElement.tagName === "INPUT";
+}
+
+// ---------- 碎片拼貼 ----------
+const FRAG_SLOTS = [
+  { top: "22%", left: "28%", w: 360, h: 205, bp: "50% 50%", label: "Subject", hero: true },
+  { top: "0%",  left: "1%",   w: 210, h: 122, bp: "0% 0%",    label: "Frame" },
+  { top: "2%",  left: "38%",  w: 150, h: 88,  bp: "40% 10%",  label: "Gaze: Strong" },
+  { top: "0%",  right: "2%",  w: 190, h: 110, bp: "100% 0%",  label: "Motion" },
+  { top: "34%", right: "0%",  w: 160, h: 94,  bp: "100% 45%", label: "Dark" },
+  { top: "38%", left: "1%",   w: 170, h: 98,  bp: "80% 20%",  label: "Grain" },
+  { top: "64%", left: "6%",   w: 180, h: 104, bp: "0% 100%",  label: "Out of focus" },
+  { top: "68%", left: "36%",  w: 200, h: 116, bp: "30% 80%",  label: "Neutral" },
+  { top: "64%", right: "3%",  w: 170, h: 98,  bp: "100% 80%", label: "Curly" },
+  { bottom: "0%", right: "28%", w: 150, h: 84, bp: "60% 100%", label: "Audio: Detected" },
+];
+
+function buildCollage(thumb) {
+  const c = $("collage");
+  c.innerHTML = "";
+  const cw = c.clientWidth || 420, ch = c.clientHeight || 400;
+  FRAG_SLOTS.forEach((s, i) => {
+    const f = document.createElement("div");
+    f.className = "frag" + (s.hero ? " hero" : "");
+    const jit = () => (Math.random() - .5) * 6;
+    ["top", "left", "right", "bottom"].forEach(k => {
+      if (s[k] !== undefined) f.style[k] = `calc(${s[k]} + ${jit().toFixed(1)}px)`;
+    });
+    const scw = s.hero ? 1 + Math.random() * .1 : .7 + Math.random() * .7;
+    const sch = s.hero ? 1 + Math.random() * .1 : .8 + Math.random() * .45;
+    const w = Math.round(s.w * scw), h = Math.round(s.h * sch);
+    if (s.hero) f.style.zIndex = "3";
+    const pct = 30 + Math.floor(Math.random() * 69);
+    const dx = (Math.random() - .5) * cw * .7, dy = (Math.random() - .5) * ch * .7;
+    const rot = (Math.random() - .5) * 40;
+    f.style.setProperty("--fx", dx.toFixed(0) + "px");
+    f.style.setProperty("--fy", dy.toFixed(0) + "px");
+    f.style.setProperty("--rot", rot.toFixed(0) + "deg");
+    f.style.setProperty("--d", (i * .7) + "s");
+    f.style.animationDelay = (i * .08) + "s, " + (i * .7 + .6) + "s";
+    const bg = thumb ? `background-image:url('${thumb.replace(/'/g, "%27")}');` : "";
+    f.innerHTML = `<div class="tag">${esc(s.label)} ${pct}%</div>
+      <div class="pic" style="width:${w}px;height:${h}px;${bg}background-position:${s.bp};"></div>`;
+    c.appendChild(f);
+    requestAnimationFrame(() => f.classList.add("in"));
+  });
+}
+
+// ---------- 單支解析 ----------
+function fillOpts() {
+  const fmts = mode === "video" ? VIDEO_FMT : AUDIO_FMT;
+  $("container").innerHTML = fmts.map(f => `<option>${f}</option>`).join("");
+  if (mode === "video") {
+    $("qwrap").classList.remove("off");
+    $("quality").innerHTML = `<option value="best">最佳</option>` +
+      heights.map(h => `<option value="${h}">${h}p</option>`).join("");
+  } else {
+    $("qwrap").classList.add("off");
+  }
+}
+function setMode(m) {
+  mode = m;
+  $("modeSwitch").classList.toggle("audio", m === "audio");
+  $("mVideo").classList.toggle("on", m === "video");
+  $("mAudio").classList.toggle("on", m === "audio");
+  fillOpts();
+}
+$("mVideo").onclick = () => setMode("video");
+$("mAudio").onclick = () => setMode("audio");
+
+function showHint(msg) {
+  $("hint").textContent = msg;
+  $("hint").classList.toggle("show", !!msg);
+}
+
+// 非同步解析:長影片/清單不會卡住橋接,也沒有時間上限
+function fetchInfo(url, onTick) {
+  return new Promise(async (resolve) => {
+    let job;
+    try {
+      const r = await api.info_start(url);
+      job = r.job;
+    } catch (e) {
+      resolve(await api.info(url));  // 舊版後備
+      return;
+    }
+    const timer = setInterval(async () => {
+      let p;
+      try { p = await api.info_poll(job); } catch (e) { return; }
+      if (p.state === "running") {
+        if (onTick) onTick(p.elapsed || 0);
+      } else if (p.state === "done") {
+        clearInterval(timer);
+        resolve(p.result || {});
+      } else {
+        clearInterval(timer);
+        resolve({ error: "解析中斷,請再試一次" });
+      }
+    }, 500);
+  });
+}
+
+$("parse").onclick = async () => {
+  const url = $("url").value.trim();
+  if (!url || !api) return;
+  $("parse").disabled = true; $("parse").classList.add("loading"); showHint("");
+  try {
+    // 單支影片安靜解析(只有轉圈動畫);清單或異常久才顯示提示
+    const looksList = /[?&]list=|\/playlist|\/channel\/|\/@|\/sets\/|\/album\//i.test(url);
+    const hintAfter = looksList ? 3 : 15;
+    const d = await fetchInfo(url, sec => {
+      if (sec >= hintAfter) {
+        $("hint").style.color = "var(--coral-dark)";
+        showHint(`解析中… ${sec}s(長影片或清單需要較久)`);
+      }
+    });
+    $("hint").style.color = "";
+    showHint("");
+    if (d.error) throw new Error(d.error);
+    if (d.playlist) {
+      loadPlaylistToBatch(d);
+      showPage("page3");
+      return;
+    }
+    heights = d.heights || [];
+    currentThumb = d.thumbnail || "";
+    currentUrl = url;
+    $("title").textContent = d.title || url;
+    $("titleTag").textContent = "Title " + (88 + Math.floor(Math.random() * 12)) + "%";
+    $("uploader").textContent = (d.uploader || "").toUpperCase() +
+      (d.duration ? " · " + fmtDur(d.duration) : "");
+    fillOpts();
+    const p1 = $("page1");
+    p1.classList.add("out");
+    setTimeout(() => {
+      showPage("page2");
+      buildCollage(currentThumb);
+    }, 430);
+  } catch (e) { showHint(e.message); }
+  finally { $("parse").disabled = false; $("parse").classList.remove("loading"); }
+};
+$("url").addEventListener("keydown", e => { if (e.key === "Enter") $("parse").click(); });
+
+function fmtDur(s) {
+  s = Math.round(s);
+  const m = Math.floor(s / 60), r = s % 60;
+  return m + ":" + String(r).padStart(2, "0");
+}
+
+// ---------- 拖放 ----------
+let dragTimer = null;
+window.addEventListener("dragover", e => {
+  e.preventDefault();
+  if (!$("page1").classList.contains("show")) return;
+  document.body.classList.add("dragging");
+  clearTimeout(dragTimer);
+  dragTimer = setTimeout(() => document.body.classList.remove("dragging"), 150);
+});
+function useDroppedText(raw) {
+  const url = (raw || "").split(/[\r\n]+/).find(l => l.trim() && !l.startsWith("#"));
+  if (url && /^https?:\/\//i.test(url.trim())) {
+    $("url").value = url.trim();
+    $("parse").click();
+    return true;
+  }
+  return false;
+}
+window.addEventListener("drop", e => {
+  e.preventDefault();
+  e.stopPropagation();
+  clearTimeout(dragTimer);
+  document.body.classList.remove("dragging");
+  if (!$("page1").classList.contains("show")) return;
+  const dt = e.dataTransfer;
+  const raw = dt.getData("text/uri-list") || dt.getData("URL") || dt.getData("text/plain");
+  if (useDroppedText(raw)) return;
+  if (dt.items) {
+    for (const item of dt.items) {
+      if (item.kind === "string") item.getAsString(s => useDroppedText(s));
+    }
+  }
+});
+
+// ---------- 單支下載 ----------
+$("dl").onclick = async () => {
+  if (!api) return;
+  const url = currentUrl || $("url").value.trim();
+  const d = await api.download(url, mode, $("container").value, $("quality").value,
+    $("title").textContent);
+  if (d.error) { addErrorTask(d.error); return; }
+  addTask(d.task_id, $("title").textContent, $("container").value);
+};
+
+function addErrorTask(msg) {
+  const el = document.createElement("div");
+  el.className = "task error final";
+  el.innerHTML = `<div class="trow"><span class="tag">Error ✕</span>
+    <span class="tname">${esc(msg.slice(0, 80))}</span></div>
+    <div class="bar"><i style="width:100%"></i></div>`;
+  $("tasks").prepend(el);
+}
+
+function addTask(id, title, fmt) {
+  const el = document.createElement("div");
+  el.className = "task"; el.id = "task-" + id;
+  el.innerHTML = `
+    <div class="trow">
+      <span class="tag st">Starting 0%</span>
+      <span class="tname">${esc(title)}.${esc(fmt)}</span>
+      <span class="tbtns">
+        <button class="tp">暫停 ⏸</button>
+        <button class="ts">終止 ✕</button>
+      </span>
+    </div>
+    <div class="bar"><i></i></div>`;
+  $("tasks").prepend(el);
+  bumpActive(1);
+  const st = el.querySelector(".st"), bar = el.querySelector(".bar i");
+  const tp = el.querySelector(".tp"), ts = el.querySelector(".ts");
+  tp.onclick = async () => {
+    const r = await api.pause(id);
+    tp.textContent = r.paused ? "繼續 ▶" : "暫停 ⏸";
+  };
+  ts.onclick = async () => { await api.cancel(id); };
+  let counted = true;
+  const finish = () => {
+    el.classList.add("final");
+    if (counted) { bumpActive(-1); counted = false; }
+    clearInterval(timer);
+  };
+  const timer = setInterval(async () => {
+    const p = await api.progress(id);
+    if (p.status === "downloading") {
+      const spd = p.speed ? " · " + (p.speed / 1048576).toFixed(1) + " MB/S" : "";
+      if (p.percent == null) {
+        st.textContent = "Downloading —" + spd;
+        bar.classList.add("indet");
+      } else {
+        bar.classList.remove("indet");
+        st.textContent = "Downloading " + Math.round(p.percent) + "%" + spd;
+        bar.style.width = p.percent + "%";
+      }
+    } else if (p.status === "paused") {
+      st.textContent = "Paused ⏸ " + Math.round(p.percent || 0) + "%";
+    } else if (p.status === "processing") {
+      el.classList.add("processing");
+      bar.classList.remove("indet");
+      st.textContent = "Converting 99%"; bar.style.width = "100%";
+    } else if (p.status === "done") {
+      el.classList.remove("processing"); el.classList.add("done");
+      bar.classList.remove("indet");
+      st.textContent = "Saved ✓ 100%"; bar.style.width = "100%";
+      finish();
+    } else if (p.status === "cancelled") {
+      el.classList.remove("processing"); el.classList.add("stopped");
+      bar.classList.remove("indet");
+      st.textContent = "Stopped ⏹";
+      finish();
+      setTimeout(() => {
+        el.classList.add("removing");
+        setTimeout(() => el.remove(), 500);
+      }, 900);
+    } else if (p.status === "error") {
+      el.classList.remove("processing"); el.classList.add("error");
+      bar.classList.remove("indet");
+      st.textContent = "Error ✕";
+      el.querySelector(".tname").textContent = (p.error || "失敗").slice(0, 80);
+      bar.style.width = "100%";
+      finish();
+    } else if (p.status === "unknown") {
+      finish();
+    }
+  }, 600);
+}
+
+// ---------- 批次 ----------
+let rows = [], rowSeq = 0;
+function addBatchRow(prefill) {
+  const rid = ++rowSeq;
+  const el = document.createElement("div");
+  el.className = "brow"; el.style.animation = "rise .35s ease";
+  el.innerHTML = `
+    <div class="rhead">
+      <span class="tag rst">${String(rid).padStart(2, "0")} · Input_</span>
+      <span class="rbtns">
+        <button class="rcp" title="暫停">暫停 ⏸</button>
+        <button class="rcs" title="終止">終止 ✕</button>
+        <button class="rx" title="移除">✕</button>
+      </span>
+    </div>
+    <div class="rline box">
+      <div class="rthumb">?</div>
+      <input type="text" class="rurl" placeholder="貼上影片網址…">
+      <select class="rmode"><option value="video">影片</option><option value="audio">音訊</option></select>
+      <select class="rfmt"></select>
+      <select class="rq"></select>
+    </div>`;
+  $("rows").appendChild(el);
+  const row = { id: rid, el, taskId: null, done: false, error: false, ready: false };
+  const rmode = el.querySelector(".rmode"), rfmt = el.querySelector(".rfmt"),
+        rq = el.querySelector(".rq");
+  function syncRow() {
+    const v = rmode.value === "video";
+    rfmt.innerHTML = (v ? VIDEO_FMT : AUDIO_FMT).map(f => `<option>${f}</option>`).join("");
+    rq.innerHTML = v
+      ? VIDEO_Q.map(q => `<option value="${q}">${q === "best" ? "最佳" : "≤" + q + "p"}</option>`).join("")
+      : `<option value="best">—</option>`;
+    rq.disabled = !v;
+  }
+  syncRow();
+  rmode.onchange = syncRow;
+  const rthumb = el.querySelector(".rthumb"), rurl = el.querySelector(".rurl"),
+        rst = el.querySelector(".rst");
+  const n = String(rid).padStart(2, "0");
+  let lastChecked = "";
+  async function validate() {
+    const u = rurl.value.trim();
+    if (!u || u === lastChecked || !api) return;
+    lastChecked = u;
+    rthumb.classList.remove("bad"); rthumb.classList.add("checking");
+    rthumb.style.backgroundImage = ""; rthumb.textContent = "…";
+    rst.textContent = `${n} · Checking…`;
+    const d = await fetchInfo(u, sec => {
+      if (sec >= 8) rst.textContent = `${n} · Checking… ${sec}s`;
+    });
+    rthumb.classList.remove("checking");
+    if (d.error) {
+      rthumb.classList.add("bad"); rthumb.textContent = "✕";
+      rst.textContent = `${n} · Invalid ✕`;
+      row.ready = false;
+    } else if (d.playlist) {
+      rthumb.textContent = "≡";
+      rst.textContent = `${n} · Playlist(${d.count}) — 已展開`;
+      loadPlaylistToBatch(d, true);
+      row.ready = false;
+      rurl.value = "";
+      lastChecked = "";
+    } else {
+      rthumb.textContent = "";
+      if (d.thumbnail) rthumb.style.backgroundImage = `url('${d.thumbnail.replace(/'/g, "%27")}')`;
+      rst.textContent = `${n} · Ready ${90 + Math.floor(Math.random() * 10)}%`;
+      row.ready = true;
+    }
+  }
+  rurl.addEventListener("change", validate);
+  rurl.addEventListener("keydown", e => { if (e.key === "Enter") validate(); });
+  const rcp = el.querySelector(".rcp"), rcs = el.querySelector(".rcs");
+  rcp.onclick = async () => {
+    if (!api || !row.taskId) return;
+    const r = await api.pause(row.taskId);
+    rcp.textContent = r.paused ? "繼續 ▶" : "暫停 ⏸";
+  };
+  rcs.onclick = async () => {
+    if (!api || !row.taskId) return;
+    await api.cancel(row.taskId);
+  };
+  el.querySelector(".rx").onclick = () => {
+    rows = rows.filter(r => r !== row);
+    el.remove();
+    updateBatchStat();
+  };
+  rows.push(row);
+  updateBatchStat();
+  if (prefill) {
+    rurl.value = prefill.url;
+    rthumb.textContent = "";
+    rst.textContent = `${n} · Ready`;
+    row.ready = true;
+    lastChecked = prefill.url;
+    if (prefill.title) rurl.title = prefill.title;
+  }
+  return row;
+}
+$("addRow").onclick = () => addBatchRow();
+
+function loadPlaylistToBatch(d, noSwitch) {
+  const items = (d.entries || []).slice(0, 100);
+  items.forEach(e => addBatchRow({ url: e.url, title: e.title }));
+  $("batchTag").textContent = `Multiples: ${d.title || "Playlist"} — ${rows.length} items`;
+  if (!noSwitch) updateBatchStat(true);
+}
+
+function updateBatchStat(keepTag) {
+  if (!keepTag) $("batchTag").textContent =
+    `Multiples: Batch ${rows.length} item${rows.length === 1 ? "" : "s"}`;
+  const done = rows.filter(r => r.done).length;
+  $("batchStat").textContent = `${done} / ${rows.length} DONE`;
+}
+
+$("dlAll").onclick = async () => {
+  if (!api) return;
+  for (const row of rows) {
+    if (row.taskId || row.done) continue;
+    const url = row.el.querySelector(".rurl").value.trim();
+    if (!url) continue;
+    const m = row.el.querySelector(".rmode").value;
+    const fmt = row.el.querySelector(".rfmt").value;
+    const q = row.el.querySelector(".rq").value;
+    const st = row.el.querySelector(".rst");
+    const d = await api.download(url, m, fmt, q, url);
+    if (d.error) {
+      st.textContent = `${String(row.id).padStart(2, "0")} · Error ✕`;
+      row.error = true; row.done = true;
+      continue;
+    }
+    row.taskId = d.task_id;
+    row.el.classList.add("active");
+    bumpActive(1);
+    pollBatchRow(row, st);
+  }
+  updateBatchStat();
+};
+
+function pollBatchRow(row, st) {
+  const n = String(row.id).padStart(2, "0");
+  let counted = true;
+  const stop = () => {
+    row.el.classList.remove("active");
+    if (counted) { bumpActive(-1); counted = false; }
+    clearInterval(timer); updateBatchStat();
+  };
+  const timer = setInterval(async () => {
+    const p = await api.progress(row.taskId);
+    row.percent = p.percent || 0;
+    if (p.status === "downloading") {
+      st.textContent = p.percent == null
+        ? `${n} · Downloading —`
+        : `${n} · Downloading ${Math.round(row.percent)}%`;
+    } else if (p.status === "paused") {
+      st.textContent = `${n} · Paused ⏸ ${Math.round(row.percent)}%`;
+    } else if (p.status === "processing") {
+      st.textContent = `${n} · Converting 99%`;
+    } else if (p.status === "done") {
+      st.textContent = `${n} · Saved ✓`; row.done = true; row.percent = 100;
+      stop();
+    } else if (p.status === "cancelled") {
+      st.textContent = `${n} · Stopped ⏹`;
+      stop();
+      setTimeout(() => {
+        row.taskId = null; row.done = false; row.percent = 0;
+        row.el.querySelector(".rcp").textContent = "暫停 ⏸";
+        st.textContent = `${n} · ` + (row.ready ? "Ready" : "Input_");
+        updateBatchStat();
+      }, 1200);
+    } else if (p.status === "error") {
+      st.textContent = `${n} · Error ✕`; row.done = true; row.error = true;
+      stop();
+    } else if (p.status === "unknown") {
+      stop();
+    }
+    const active = rows.filter(r => r.taskId || r.done);
+    if (active.length) {
+      const total = active.reduce((a, r) => a + (r.percent || 0), 0) / active.length;
+      $("batchBar").style.width = total + "%";
+    }
+  }, 700);
+}
+</script>
+</body>
+</html>

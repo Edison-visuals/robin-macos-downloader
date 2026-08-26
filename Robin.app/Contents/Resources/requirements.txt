@@ -1,0 +1,3 @@
+pywebview
+yt-dlp
+certifi
