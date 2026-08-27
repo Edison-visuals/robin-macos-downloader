@@ -12,6 +12,26 @@ Robin runs as a regular Mac app—there is no browser tab, localhost server, or 
 
 > **Note:** Robin's current interface is in Traditional Chinese. This README provides English setup and usage instructions.
 
+## Interface
+
+### Paste a URL and start quickly
+
+![Robin home screen with a URL input and navigation buttons](docs/screenshots/home.jpg)
+
+Robin opens to a focused URL input. Paste a supported media link, then use the arrow button to inspect the available video and audio formats. The home screen also provides direct access to batch downloads, settings, dark mode, and quit controls.
+
+### Download several items in one batch
+
+![Robin batch download screen with three configurable rows](docs/screenshots/batch-downloads.jpg)
+
+The **MULTIPLES** view accepts several URLs at once. Each row can use its own video or audio mode, output container, and maximum resolution. Robin shows combined progress at the bottom while keeping per-item pause, stop, and remove controls available.
+
+### Keep downloads local and configurable
+
+![Robin settings screen with output, cookie, sound, engine, and history controls](docs/screenshots/settings.jpg)
+
+The settings screen lets you choose the output folder, optionally read an authenticated browser session, select a completion sound, update yt-dlp, verify FFmpeg availability, and review recent download history. Configuration and history remain on your Mac.
+
 ## Features
 
 - Download video as MP4, MOV, MKV, or WebM
